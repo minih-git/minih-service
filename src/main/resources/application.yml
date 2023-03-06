@@ -1,0 +1,9 @@
+server:
+    port: 8001
+wx:
+    mp:
+        configs:
+            - appId: wxdcfb4079876b24da # 第一个公众号的appid
+              secret: c06ff7eb9fa0bc93ff3c67d66b506d6e # 公众号的appsecret
+              token: minih # 接口配置里的Token值
+              aesKey: KBY4DIf4e2nlcQ7yFoxnq4cHP6O6f5ILASde5xA984p # 接口配置里的EncodingAESKey值
