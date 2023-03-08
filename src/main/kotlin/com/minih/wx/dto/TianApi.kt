@@ -1,3 +1,5 @@
+@file:Suppress("SpellCheckingInspection")
+
 package com.minih.wx.dto
 
 /**
@@ -7,19 +9,19 @@ package com.minih.wx.dto
  */
 interface TianApiParams
 
-class TianApiResponse<T> {
-    var code: String = ""
-    var msg: String = ""
-    var result: T? = null
-}
+open class TianApiResponse(var code: String, var msg: String)
 
 data class TianApiOneParams(var rand: Int?, var date: String?) : TianApiParams
 
-data class TianApiOneResponse(
+class TianApiOneResponse : TianApiResponse("", "") {
+    var result: TianApiOneResult? = TianApiOneResult("", "", "", "", "", "")
+}
+
+data class TianApiOneResult(
     var oneid: String,
     var word: String,
     var wordfrom: String,
     var imgurl: String,
     var imgauthor: String,
     var date: String
-):TianApiResponse()
+)

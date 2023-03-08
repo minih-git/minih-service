@@ -7,7 +7,7 @@ wx:
                 secret: 513a05c70c0fdaaa7a77bb8bda7c2ed5 # 公众号的appSecret
                 token: minih # 接口配置里的Token值
                 aesKey: KBY4DIf4e2nlcQ7yFoxnq4cHP6O6f5ILASde5xA984p # 接口配置里的EncodingAESKey值
-tianApi:
+tianapi:
     token: f788406b996608f74bfa23e4c161a700
     baseUrl: https://apis.tianapi.com
     urls:
