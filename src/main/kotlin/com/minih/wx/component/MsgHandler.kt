@@ -1,11 +1,10 @@
-package com.minih.wx.compoent
+package com.minih.wx.component
 
 import cn.hutool.core.collection.CollUtil
 import cn.hutool.http.Header
 import cn.hutool.http.HttpRequest
 import cn.hutool.json.JSONObject
 import cn.hutool.json.JSONUtil
-import com.minih.wx.controller.CallbackController
 import me.chanjar.weixin.common.session.WxSessionManager
 import me.chanjar.weixin.mp.api.WxMpMessageHandler
 import me.chanjar.weixin.mp.api.WxMpService
@@ -48,9 +47,7 @@ class MsgHandler : WxMpMessageHandler {
             .execute().body()
         val resultObj = JSONUtil.parseObj(result)
         val returnMsg = CollUtil.getFirst(resultObj.getJSONArray("choices").stream().map { obj: Any? ->
-            JSONUtil.parseObj(
-                obj
-            )
+            JSONUtil.parseObj(obj)
         }.collect(Collectors.toList())).getStr("text")
         log.info("returnMsg:{}", returnMsg)
         return WxMpXmlOutTextMessage.TEXT().content(returnMsg)

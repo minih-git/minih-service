@@ -1,6 +1,6 @@
 package com.minih.wx.config
 
-import com.minih.wx.compoent.MsgHandler
+import com.minih.wx.component.MsgHandler
 import jakarta.annotation.Resource
 import me.chanjar.weixin.mp.api.WxMpMessageRouter
 import me.chanjar.weixin.mp.api.WxMpService
@@ -59,4 +59,3 @@ class WxMpConfiguration {
 
 
 }
-

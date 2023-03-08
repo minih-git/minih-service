@@ -3,7 +3,23 @@ server:
 wx:
     mp:
         configs:
-            - appId: wxdcfb4079876b24da # 第一个公众号的appid
-              secret: c06ff7eb9fa0bc93ff3c67d66b506d6e # 公众号的appsecret
-              token: minih # 接口配置里的Token值
-              aesKey: KBY4DIf4e2nlcQ7yFoxnq4cHP6O6f5ILASde5xA984p # 接口配置里的EncodingAESKey值
+            -   appId: wx38938b3d773e3271 # 第一个公众号的appid
+                secret: 513a05c70c0fdaaa7a77bb8bda7c2ed5 # 公众号的appSecret
+                token: minih # 接口配置里的Token值
+                aesKey: KBY4DIf4e2nlcQ7yFoxnq4cHP6O6f5ILASde5xA984p # 接口配置里的EncodingAESKey值
+tianApi:
+    token: f788406b996608f74bfa23e4c161a700
+    baseUrl: https://apis.tianapi.com
+    urls:
+        -   name: 每日简报
+            code: bulletin
+            url: /bulletin/index
+        -   name: ONE一个
+            code: one
+            url: /one/index
+        -   name: 情话
+            code: saylove
+            url: /saylove/index
+        -   name: 天气
+            code: tianqi
+            url: /tianqi/index

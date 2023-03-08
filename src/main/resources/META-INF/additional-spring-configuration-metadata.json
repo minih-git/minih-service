@@ -1,0 +1,13 @@
+{
+  "properties": [
+    {
+      "name": "tianApi.token",
+      "type": "java.lang.String",
+      "description": "Description for tianApi.token."
+    },
+    {
+      "name": "tianApi.baseUrl",
+      "type": "java.lang.String",
+      "description": "Description for tianApi.baseUrl."
+    }
+  ] }
