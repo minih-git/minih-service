@@ -1,6 +1,9 @@
 package com.minih.wx.controller
 
 import jakarta.annotation.Resource
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import me.chanjar.weixin.mp.api.WxMpMessageRouter
 import me.chanjar.weixin.mp.api.WxMpService
 import me.chanjar.weixin.mp.bean.message.WxMpXmlMessage
@@ -43,6 +46,7 @@ class CallbackController {
         return "false"
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @PostMapping("/gzh", consumes = [MediaType.TEXT_XML_VALUE], produces = [MediaType.TEXT_XML_VALUE])
     fun postGzhCallBack(
         @RequestBody requestBody: String,
@@ -57,10 +61,9 @@ class CallbackController {
             throw IllegalArgumentException("非法请求，可能属于伪造的请求！");
         }
         val inMessage: WxMpXmlMessage = WxMpXmlMessage.fromXml(requestBody)
-        log.info("inMessage:{}", inMessage)
-        val outMessage: WxMpXmlOutMessage = router.route(inMessage)
-        log.info("outMessage:{}",outMessage.toXml())
-        return outMessage.toXml()
+        GlobalScope.launch {
+            router.route(inMessage)
+        }
+        return "success"
     }
 }
-

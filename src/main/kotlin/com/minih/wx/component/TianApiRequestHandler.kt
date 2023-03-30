@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Component
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.isSubclassOf
 
 /**
  * @author hubin
@@ -29,15 +30,16 @@ class TianApiRequestHandler(private val properties: TianApiProperties) {
         if (properties.urls.stream().map(TianApiUrl::code).toList().none { it == apiCode }) {
             return TianApiResponse("000", "未找到对应的api");
         }
+        if (!clazz.isSubclassOf(TianApiResponse::class)) {
+            return TianApiResponse("000", "返回数据类型不正确");
+        }
         val url = properties.baseUrl + properties.urls.find { it.code == apiCode }?.url;
         val resStr = HttpRequest.post(url)
             .contentType(ContentType.FORM_URLENCODED.value)
             .form("key", properties.token)
             .form(BeanUtil.beanToMap(params))
             .execute().body()
-        val result = clazz.createInstance()
-        BeanUtil.copyProperties(JSONUtil.parseObj(resStr), result,true)
-        return result
+        return JSONUtil.toBean(resStr, clazz.java)
 
     }
 

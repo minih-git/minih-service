@@ -8,6 +8,7 @@ import cn.hutool.json.JSONUtil
 import me.chanjar.weixin.common.session.WxSessionManager
 import me.chanjar.weixin.mp.api.WxMpMessageHandler
 import me.chanjar.weixin.mp.api.WxMpService
+import me.chanjar.weixin.mp.bean.kefu.WxMpKefuMessage
 import me.chanjar.weixin.mp.bean.message.WxMpXmlMessage
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutMessage
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutTextMessage
@@ -41,7 +42,7 @@ class MsgHandler : WxMpMessageHandler {
         jsonObject.putOnce("frequency_penalty", 0)
         jsonObject.putOnce("presence_penalty", 0.6)
         jsonObject.putOnce("stop", arrayOf("{}"))
-        val result = HttpRequest.post(" https://api.openai.com/v1/completions")
+        val result = HttpRequest.post("https://service-ibo78qcu-1256174042.sg.apigw.tencentcs.com/v1/completions")
             .header(Header.AUTHORIZATION, "Bearer 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")
             .body(jsonObject.toString())
             .execute().body()
@@ -50,7 +51,15 @@ class MsgHandler : WxMpMessageHandler {
             JSONUtil.parseObj(obj)
         }.collect(Collectors.toList())).getStr("text")
         log.info("returnMsg:{}", returnMsg)
-        return WxMpXmlOutTextMessage.TEXT().content(returnMsg)
+
+        wxMpService?.kefuService?.sendKefuMessage(
+            WxMpKefuMessage
+                .TEXT()
+                .toUser(wxMessage?.fromUser)
+                .content(returnMsg.trim())
+                .build()
+        )
+        return WxMpXmlOutTextMessage.TEXT().content(returnMsg.trim())
             .fromUser(wxMessage?.toUser).toUser(wxMessage?.fromUser).build()
     }
 

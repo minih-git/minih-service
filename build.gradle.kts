@@ -19,6 +19,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -28,6 +29,8 @@ dependencies {
     implementation("cn.hutool:hutool-all:5.8.14")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+
 }
 
 tasks.withType<KotlinCompile> {

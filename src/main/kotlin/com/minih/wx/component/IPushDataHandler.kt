@@ -7,7 +7,7 @@ package com.minih.wx.component
  */
 interface IPushDataHandler {
 
-    fun buildData()
+    fun buildData():String
 
 
 }

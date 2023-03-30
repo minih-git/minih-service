@@ -30,8 +30,8 @@ class TestController(private val wxMpService: WxMpService, private val tainApiSe
     @GetMapping("/senMsg")
     fun test(msg: String?) {
         val wxUserList = this.wxMpService.userService.userList("")
-        val data =tainApiService.getData(TianApiUrlCode.ONE.value, TianApiOneParams(0, ""), TianApiOneResponse::class);
-        if(data is TianApiOneResponse){
+        val data = tainApiService.getData(TianApiUrlCode.ONE.value, TianApiOneParams(0, ""), TianApiOneResponse::class);
+        if (data is TianApiOneResponse) {
             wxMpService.kefuService.sendKefuMessage(
                 WxMpKefuMessage
                     .TEXT()
@@ -41,12 +41,11 @@ class TestController(private val wxMpService: WxMpService, private val tainApiSe
             )
             return;
         }
-        if(data is TianApiResponse){
+        if (data is TianApiResponse) {
 
             log.warn(data.msg)
             return;
         }
-
 
 
     }
