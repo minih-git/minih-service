@@ -23,3 +23,10 @@ tianapi:
         -   name: 天气
             code: tianqi
             url: /tianqi/index
+spring:
+    data:
+        redis:
+            host: 121.5.28.27
+            password: hgRedis
+            port: 6379
+            database: 2

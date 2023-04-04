@@ -1,10 +1,9 @@
 package com.minih.wx.component
 
-import cn.hutool.core.collection.CollUtil
-import cn.hutool.http.Header
-import cn.hutool.http.HttpRequest
-import cn.hutool.json.JSONObject
 import cn.hutool.json.JSONUtil
+import com.plexpt.chatgpt.ChatGPT
+import com.plexpt.chatgpt.entity.chat.ChatCompletion
+import com.plexpt.chatgpt.entity.chat.Message
 import me.chanjar.weixin.common.session.WxSessionManager
 import me.chanjar.weixin.mp.api.WxMpMessageHandler
 import me.chanjar.weixin.mp.api.WxMpService
@@ -14,8 +13,9 @@ import me.chanjar.weixin.mp.bean.message.WxMpXmlOutMessage
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutTextMessage
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Component
-import java.util.stream.Collectors
+
 
 /**
  * @author hubin
@@ -23,7 +23,7 @@ import java.util.stream.Collectors
  * @desc
  */
 @Component
-class MsgHandler : WxMpMessageHandler {
+class MsgHandler(val redisTemplate: RedisTemplate<String, String>) : WxMpMessageHandler {
     val log: Logger = LoggerFactory.getLogger(MsgHandler::class.java)
     override fun handle(
         wxMessage: WxMpXmlMessage?,
@@ -32,34 +32,16 @@ class MsgHandler : WxMpMessageHandler {
         sessionManager: WxSessionManager?
     ): WxMpXmlOutMessage {
 
-        val realPrompt = "\n请回答以下问题:\n${wxMessage?.content}\n {}"
-        val jsonObject = JSONObject()
-        jsonObject.putOnce("model", "text-davinci-003")
-        jsonObject.putOnce("prompt", realPrompt)
-        jsonObject.putOnce("max_tokens", 2048)
-        jsonObject.putOnce("temperature", 0)
-        jsonObject.putOnce("top_p", 1)
-        jsonObject.putOnce("frequency_penalty", 0)
-        jsonObject.putOnce("presence_penalty", 0.6)
-        jsonObject.putOnce("stop", arrayOf("{}"))
-        val result = HttpRequest.post("https://service-ibo78qcu-1256174042.sg.apigw.tencentcs.com/v1/completions")
-            .header(Header.AUTHORIZATION, "Bearer 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")
-            .body(jsonObject.toString())
-            .execute().body()
-        val resultObj = JSONUtil.parseObj(result)
-        val returnMsg = CollUtil.getFirst(resultObj.getJSONArray("choices").stream().map { obj: Any? ->
-            JSONUtil.parseObj(obj)
-        }.collect(Collectors.toList())).getStr("text")
-        log.info("returnMsg:{}", returnMsg)
+
 
         wxMpService?.kefuService?.sendKefuMessage(
             WxMpKefuMessage
                 .TEXT()
                 .toUser(wxMessage?.fromUser)
-                .content(returnMsg.trim())
+                .content(res.content.trim())
                 .build()
         )
-        return WxMpXmlOutTextMessage.TEXT().content(returnMsg.trim())
+        return WxMpXmlOutTextMessage.TEXT().content(res.content.trim())
             .fromUser(wxMessage?.toUser).toUser(wxMessage?.fromUser).build()
     }
 

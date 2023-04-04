@@ -1,10 +1,9 @@
 package com.minih.wx.component
 
 import com.minih.wx.config.TianApiUrlCode
-import com.minih.wx.controller.TestController
-import com.minih.wx.dto.*
-import me.chanjar.weixin.mp.api.WxMpService
-import me.chanjar.weixin.mp.bean.kefu.WxMpKefuMessage
+import com.minih.wx.dto.TianApiResponse
+import com.minih.wx.dto.TianApiWeatherParams
+import com.minih.wx.dto.TianApiWeatherResponse
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
