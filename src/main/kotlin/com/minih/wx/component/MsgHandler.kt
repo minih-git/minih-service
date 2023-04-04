@@ -1,9 +1,6 @@
 package com.minih.wx.component
 
-import cn.hutool.json.JSONUtil
-import com.plexpt.chatgpt.ChatGPT
-import com.plexpt.chatgpt.entity.chat.ChatCompletion
-import com.plexpt.chatgpt.entity.chat.Message
+import com.minih.wx.service.ChatGPTService
 import me.chanjar.weixin.common.session.WxSessionManager
 import me.chanjar.weixin.mp.api.WxMpMessageHandler
 import me.chanjar.weixin.mp.api.WxMpService
@@ -13,7 +10,6 @@ import me.chanjar.weixin.mp.bean.message.WxMpXmlOutMessage
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutTextMessage
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Component
 
 
@@ -23,7 +19,7 @@ import org.springframework.stereotype.Component
  * @desc
  */
 @Component
-class MsgHandler(val redisTemplate: RedisTemplate<String, String>) : WxMpMessageHandler {
+class MsgHandler(val chatGPTService: ChatGPTService) : WxMpMessageHandler {
     val log: Logger = LoggerFactory.getLogger(MsgHandler::class.java)
     override fun handle(
         wxMessage: WxMpXmlMessage?,
@@ -31,17 +27,15 @@ class MsgHandler(val redisTemplate: RedisTemplate<String, String>) : WxMpMessage
         wxMpService: WxMpService?,
         sessionManager: WxSessionManager?
     ): WxMpXmlOutMessage {
-
-
-
+        val returnMsg = chatGPTService.simpleChat(wxMessage?.fromUser, wxMessage?.content);
         wxMpService?.kefuService?.sendKefuMessage(
             WxMpKefuMessage
                 .TEXT()
                 .toUser(wxMessage?.fromUser)
-                .content(res.content.trim())
+                .content(returnMsg.content.trim())
                 .build()
         )
-        return WxMpXmlOutTextMessage.TEXT().content(res.content.trim())
+        return WxMpXmlOutTextMessage.TEXT().content(returnMsg.content.trim())
             .fromUser(wxMessage?.toUser).toUser(wxMessage?.fromUser).build()
     }
 

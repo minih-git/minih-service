@@ -6,6 +6,7 @@ import com.plexpt.chatgpt.entity.chat.ChatCompletion
 import com.plexpt.chatgpt.entity.chat.Message
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import java.util.concurrent.TimeUnit
 
 /**
  * @author hubin
@@ -15,7 +16,12 @@ import org.springframework.stereotype.Service
 @Service
 class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
 
-    fun simpleChat(user: String, msg: String): Message {
+    val apiKey = "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"
+
+    fun simpleChat(user: String?, msg: String?): Message {
+        if (user.isNullOrEmpty() || msg.isNullOrEmpty()) {
+            return Message.of("请输入问题！")
+        }
         val cache = redisTemplate.opsForList().range("chatgpt-chatId:$user", 0, -1)
         val promptList: MutableList<Message> = mutableListOf()
         if (cache.isNullOrEmpty()) {
@@ -29,12 +35,13 @@ class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
             }
         }
         val chatGPT = ChatGPT.builder()
-            .apiKey("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")
+            .apiKey(apiKey)
             .timeout(900)
-            .apiHost("https://service-ibo78qcu-1256174042.sg.apigw.tencentcs.com/") //反向代理地址
+            .apiHost("https://service-ibo78qcu-1256174042.sg.apigw.tencentcs.com/")
             .build()
             .init()
         val message: Message = Message.of(msg)
+        promptList.add(message)
         redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(message))
         val chatCompletion = ChatCompletion.builder()
             .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
@@ -44,11 +51,22 @@ class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
             .build()
         val response = chatGPT.chatCompletion(chatCompletion)
         response.choices?.let {
-
+            val res: Message = response.choices[0].message
+            redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(res))
+            return res;
         }
-        val res: Message = response.choices[0].message
-        redisTemplate.opsForList().rightPush("chatgpt-chatId:user", JSONUtil.toJsonStr(res))
-        return res;
+        redisTemplate.delete("chatgpt-chatId:$user")
+        val retryS = redisTemplate.opsForValue()["chatgpt-chatId-retry:$user"]
+        var retry = 0
+        retryS?.let {
+            retry = it.toInt()
+            if (retry > 3) {
+                return Message.of("机器人出错了，请稍后再试!")
+            }
+            retry++
+        }
+        redisTemplate.opsForValue()["chatgpt-chatId-retry:$user", retry.toString(), 1] = TimeUnit.MINUTES
+        return simpleChat(user, msg)
     }
 
 }
