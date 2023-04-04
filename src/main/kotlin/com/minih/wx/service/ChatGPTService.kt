@@ -3,14 +3,20 @@ package com.minih.wx.service
 import cn.hutool.json.JSONUtil
 import com.minih.wx.component.MsgHandler
 import com.plexpt.chatgpt.ChatGPT
+import com.plexpt.chatgpt.ChatGPTStream
 import com.plexpt.chatgpt.entity.chat.ChatCompletion
+import com.plexpt.chatgpt.entity.chat.ChatCompletionResponse
 import com.plexpt.chatgpt.entity.chat.Message
+import com.plexpt.chatgpt.listener.SseStreamListener
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.util.*
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
+
 
 /**
  * @author hubin
@@ -23,8 +29,13 @@ class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
     val log: Logger = LoggerFactory.getLogger(MsgHandler::class.java)
 
     val apiKey = "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"
+    val apiHost = "https://openai.minih.cn/"
 
-    fun simpleChat(user: String?, msg: String?): Message {
+    fun textChat(user: String?, msg: String?): Message? {
+        return textChat(user, msg, null)
+    }
+    fun textChat(user: String?, msg: String?, sseEmitter: SseEmitter?): Message? {
+
         if (user.isNullOrEmpty() || msg.isNullOrEmpty()) {
             return Message.of("请输入问题！")
         }
@@ -40,28 +51,19 @@ class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
                 promptList.add(JSONUtil.toBean(it, Message::class.java))
             }
         }
-        val chatGPT = ChatGPT.builder()
-            .apiKey(apiKey)
-            .timeout(900)
-            .apiHost("https://openai.minih.cn/")
-            .build()
-            .init()
         val message: Message = Message.of(msg)
         promptList.add(message)
         redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(message))
-        val chatCompletion = ChatCompletion.builder()
-            .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
-            .messages(promptList)
-            .maxTokens(3000)
-            .temperature(0.9)
-            .build()
         try {
-            val response = chatGPT.chatCompletion(chatCompletion)
-            log.info("chatgpt response $response")
-            response.choices?.let {
-                val res: Message = response.choices[0].message
-                redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(res))
-                return res;
+            if (sseEmitter == null) {
+                val res = simpleChat(promptList)
+                res.choices?.let {
+                    redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(res))
+                    return res.choices[0].message;
+                }
+            } else {
+                streamChat(promptList, sseEmitter)
+                return null
             }
         } catch (e: Exception) {
             redisTemplate.delete("chatgpt-chatId:$user")
@@ -76,7 +78,36 @@ class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
             retry++
             redisTemplate.opsForValue().set("chatgpt-chatId-retry:$user", retry.toString(), 1, TimeUnit.MINUTES)
         }
-        return simpleChat(user, msg)
+        return textChat(user, msg, sseEmitter)
+    }
+
+    fun simpleChat(promptList: MutableList<Message>): ChatCompletionResponse {
+        val chatGPT = ChatGPT.builder()
+            .apiKey(apiKey)
+            .timeout(900)
+            .apiHost(apiHost)
+            .build()
+            .init()
+        val chatCompletion = ChatCompletion.builder()
+            .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
+            .messages(promptList)
+            .maxTokens(3000)
+            .temperature(0.9)
+            .build()
+        return chatGPT.chatCompletion(chatCompletion)
+    }
+
+
+    fun streamChat(promptList: MutableList<Message>, sseEmitter: SseEmitter) {
+        val chatGPTStream = ChatGPTStream.builder()
+            .timeout(600)
+            .apiKey(apiKey)
+            .apiHost(apiHost)
+            .build()
+            .init()
+        val listener = SseStreamListener(sseEmitter)
+        listener.onComplate = Consumer { _: String? -> }
+        chatGPTStream.streamChatCompletion(promptList, listener)
     }
 
 }

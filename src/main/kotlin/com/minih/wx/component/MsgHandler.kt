@@ -27,15 +27,15 @@ class MsgHandler(val chatGPTService: ChatGPTService) : WxMpMessageHandler {
         wxMpService: WxMpService?,
         sessionManager: WxSessionManager?
     ): WxMpXmlOutMessage {
-        val returnMsg = chatGPTService.simpleChat(wxMessage?.fromUser, wxMessage?.content);
+        val returnMsg = chatGPTService.textChat(wxMessage?.fromUser, wxMessage?.content);
         wxMpService?.kefuService?.sendKefuMessage(
             WxMpKefuMessage
                 .TEXT()
                 .toUser(wxMessage?.fromUser)
-                .content(returnMsg.content.trim())
+                .content(returnMsg?.content?.trim())
                 .build()
         )
-        return WxMpXmlOutTextMessage.TEXT().content(returnMsg.content.trim())
+        return WxMpXmlOutTextMessage.TEXT().content(returnMsg?.content?.trim())
             .fromUser(wxMessage?.toUser).toUser(wxMessage?.fromUser).build()
     }
 
