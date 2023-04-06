@@ -31,10 +31,12 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.4")
     implementation("com.aallam.openai:openai-client:3.2.0")
     runtimeOnly("io.ktor:ktor-client-apache:2.2.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    implementation("org.springframework.session:spring-session-data-redis:3.0.1")
 
 }
 
