@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("org.springframework.boot") version "3.1.0-SNAPSHOT"
     id("io.spring.dependency-management") version "1.1.0"
+    kotlin("plugin.serialization") version "1.8.10"
     kotlin("jvm") version "1.8.10"
     kotlin("plugin.spring") version "1.8.10"
 }
@@ -30,7 +31,10 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation("com.github.plexpt:chatgpt:4.0.6")
+    implementation("com.aallam.openai:openai-client:3.2.0")
+    runtimeOnly("io.ktor:ktor-client-apache:2.2.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
 }
 

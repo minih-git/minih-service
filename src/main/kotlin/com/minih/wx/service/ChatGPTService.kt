@@ -1,21 +1,22 @@
 package com.minih.wx.service
 
-import cn.hutool.json.JSONUtil
+import com.aallam.openai.api.BetaOpenAI
+import com.aallam.openai.api.chat.*
+import com.aallam.openai.api.model.ModelId
+import com.aallam.openai.client.OpenAI
+import com.aallam.openai.client.OpenAIConfig
+import com.aallam.openai.client.OpenAIHost
 import com.minih.wx.component.MsgHandler
-import com.plexpt.chatgpt.ChatGPT
-import com.plexpt.chatgpt.ChatGPTStream
-import com.plexpt.chatgpt.entity.chat.ChatCompletion
-import com.plexpt.chatgpt.entity.chat.ChatCompletionResponse
-import com.plexpt.chatgpt.entity.chat.Message
-import com.plexpt.chatgpt.listener.SseStreamListener
+import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
-import java.util.*
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 
 
 /**
@@ -24,45 +25,58 @@ import java.util.function.Consumer
  * @desc
  */
 @Service
-class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
+@OptIn(BetaOpenAI::class)
+class ChatGPTService(
+    val redisTemplate: RedisTemplate<String, String>
+) {
 
-    val log: Logger = LoggerFactory.getLogger(MsgHandler::class.java)
+    val log: Logger = LoggerFactory.getLogger(ChatGPTService::class.java)
+    val openAI =
+        OpenAI(OpenAIConfig(token = System.getenv("OPENAI_API_KEY"), host = OpenAIHost("https://openai.minih.cn/")))
 
-    val apiKey = "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"
-    val apiHost = "https://openai.minih.cn/"
-
-    fun textChat(user: String?, msg: String?): Message? {
+    @OptIn(BetaOpenAI::class)
+    suspend fun textChat(user: String?, msg: String?): ChatMessage? {
         return textChat(user, msg, null)
     }
-    fun textChat(user: String?, msg: String?, sseEmitter: SseEmitter?): Message? {
 
+    @OptIn(BetaOpenAI::class)
+    suspend fun textChat(user: String?, msg: String?, sseEmitter: SseEmitter?): ChatMessage? {
         if (user.isNullOrEmpty() || msg.isNullOrEmpty()) {
-            return Message.of("请输入问题！")
+            return ChatMessage(role = ChatRole.Assistant, content = "请输入问题！")
         }
         val cache = redisTemplate.opsForList().range("chatgpt-chatId:$user", 0, -1)
-        val promptList: MutableList<Message> = mutableListOf()
-        if (cache.isNullOrEmpty()) {
-            val system: Message = Message.ofSystem("你是一个专业的AI助手,在你的回答中 不要透露任何关于chatgpt的信息。")
-            promptList.add(system)
-            redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(system))
-
-        } else {
-            cache.forEach {
-                promptList.add(JSONUtil.toBean(it, Message::class.java))
+        val promptList = cache.run {
+            val tmp = (this ?: mutableListOf()).map { Json.decodeFromString<ChatMessage>(it) }
+                .toMutableList()
+            if (this.isNullOrEmpty()) {
+                val system: ChatMessage = ChatMessage(
+                    role = ChatRole.System,
+                    content = "你是一个专业的AI助手,在你的回答中 不要透露任何关于chatgpt的信息。"
+                );
+                redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", Json.encodeToString<ChatMessage>(system))
+                tmp.add(system)
             }
+            tmp.add(ChatMessage(role = ChatRole.User, content = msg))
+            redisTemplate.opsForList()
+                .rightPush(
+                    "chatgpt-chatId:$user",
+                    Json.encodeToString<ChatMessage>(ChatMessage(role = ChatRole.User, content = msg))
+                )
+            tmp
         }
-        val message: Message = Message.of(msg)
-        promptList.add(message)
-        redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(message))
         try {
             if (sseEmitter == null) {
                 val res = simpleChat(promptList)
-                res.choices?.let {
-                    redisTemplate.opsForList().rightPush("chatgpt-chatId:$user", JSONUtil.toJsonStr(res))
-                    return res.choices[0].message;
+                res.choices[0].let {
+                    redisTemplate.opsForList()
+                        .rightPush("chatgpt-chatId:$user", Json.encodeToString<ChatMessage>(it.message!!))
+                    return it.message;
                 }
             } else {
-                streamChat(promptList, sseEmitter)
+                val res = flowChat(promptList)
+                res.collect {
+                    it.choices[0].delta?.content?.let { it1 -> sseEmitter.send(it1) }
+                }
                 return null
             }
         } catch (e: Exception) {
@@ -72,7 +86,7 @@ class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
             retryS?.let {
                 retry = it.toInt()
                 if (retry >= 3) {
-                    return Message.of("机器人出错了，请稍后再试!")
+                    return ChatMessage(role = ChatRole.Assistant, "机器人出错了，请稍后再试!")
                 }
             }
             retry++
@@ -81,33 +95,21 @@ class ChatGPTService(val redisTemplate: RedisTemplate<String, String>) {
         return textChat(user, msg, sseEmitter)
     }
 
-    fun simpleChat(promptList: MutableList<Message>): ChatCompletionResponse {
-        val chatGPT = ChatGPT.builder()
-            .apiKey(apiKey)
-            .timeout(900)
-            .apiHost(apiHost)
-            .build()
-            .init()
-        val chatCompletion = ChatCompletion.builder()
-            .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
-            .messages(promptList)
-            .maxTokens(3000)
-            .temperature(0.9)
-            .build()
-        return chatGPT.chatCompletion(chatCompletion)
+    @OptIn(BetaOpenAI::class)
+    suspend fun simpleChat(promptList: MutableList<ChatMessage>): ChatCompletion {
+        val chatCompletionRequest = ChatCompletionRequest(
+            model = ModelId("gpt-3.5-turbo"),
+            messages = promptList
+        )
+        return openAI.chatCompletion(chatCompletionRequest)
     }
 
-
-    fun streamChat(promptList: MutableList<Message>, sseEmitter: SseEmitter) {
-        val chatGPTStream = ChatGPTStream.builder()
-            .timeout(600)
-            .apiKey(apiKey)
-            .apiHost(apiHost)
-            .build()
-            .init()
-        val listener = SseStreamListener(sseEmitter)
-        listener.onComplate = Consumer { _: String? -> }
-        chatGPTStream.streamChatCompletion(promptList, listener)
+    @OptIn(BetaOpenAI::class)
+    fun flowChat(promptList: MutableList<ChatMessage>): Flow<ChatCompletionChunk> {
+        val chatCompletionRequest = ChatCompletionRequest(
+            model = ModelId("gpt-3.5-turbo"),
+            messages = promptList
+        )
+        return openAI.chatCompletions(chatCompletionRequest)
     }
-
 }
