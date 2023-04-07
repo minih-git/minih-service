@@ -2,6 +2,7 @@ package com.minih.wx.service
 
 import com.aallam.openai.api.BetaOpenAI
 import com.aallam.openai.api.chat.*
+import com.aallam.openai.api.logging.LogLevel
 import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.aallam.openai.client.OpenAIConfig
@@ -14,6 +15,7 @@ import kotlinx.serialization.json.Json
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.util.concurrent.TimeUnit
@@ -32,7 +34,10 @@ class ChatGPTService(
 
     val log: Logger = LoggerFactory.getLogger(ChatGPTService::class.java)
     val openAI =
-        OpenAI(OpenAIConfig(token = System.getenv("OPENAI_API_KEY"), host = OpenAIHost("https://openai.minih.cn/")))
+        OpenAI(OpenAIConfig(
+            token = System.getenv("OPENAI_API_KEY"),
+            host = OpenAIHost("https://openai.minih.cn/"),
+            logLevel = LogLevel.Body))
 
     @OptIn(BetaOpenAI::class)
     suspend fun textChat(user: String?, msg: String?): ChatMessage? {
@@ -74,10 +79,14 @@ class ChatGPTService(
                 }
             } else {
                 val res = flowChat(promptList)
-                res.collect {
-                    it.choices[0].delta?.content?.let { it1 -> sseEmitter.send(it1) }
+                res.onCompletion {
+                    sseEmitter.send("<complete>")
+                }.collect {
+                    it.choices[0].delta?.content?.let { it1 ->
+                        sseEmitter.send(it1.replace("\n","<&br>"), MediaType.TEXT_PLAIN)
+                    }
                 }
-                res.onCompletion { sseEmitter.complete() }
+
                 return null
             }
         } catch (e: Exception) {
@@ -110,7 +119,7 @@ class ChatGPTService(
     fun flowChat(promptList: MutableList<ChatMessage>): Flow<ChatCompletionChunk> {
         val chatCompletionRequest = ChatCompletionRequest(
             model = ModelId("gpt-3.5-turbo"),
-            messages = promptList
+            messages = promptList,
         )
         return openAI.chatCompletions(chatCompletionRequest)
     }

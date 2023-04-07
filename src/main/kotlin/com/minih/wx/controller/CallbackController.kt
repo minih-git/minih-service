@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*
  * @desc
  */
 @RestController
-@RequestMapping("/api/callback")
+@RequestMapping("/callback")
 class CallbackController {
 
     val log: Logger = LoggerFactory.getLogger(CallbackController::class.java)

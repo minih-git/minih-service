@@ -32,7 +32,7 @@ class SseEmitterController {
             }
             SseEmitterMap[uuid] = emitter
         }
-        emitter.send("连接成功")
+        emitter.send("<连接成功>")
         return emitter;
     }
 
